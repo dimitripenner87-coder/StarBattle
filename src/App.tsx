@@ -414,7 +414,6 @@ function StarBattleGame() {
       ? 'bg-slate-800 ring-slate-600 text-slate-100'
       : 'bg-white ring-slate-200 text-slate-900'
   const mutedCls = isSabi ? 'text-pink-700' : isDark ? 'text-slate-400' : 'text-slate-500'
-  const accentRing = isSabi ? 'ring-pink-400' : isDark ? 'ring-slate-500' : 'ring-slate-500'
 
   return (
     <div className={cn('min-h-[100dvh] max-h-[100dvh] w-full overscroll-none', bgMain, textMain)}>
