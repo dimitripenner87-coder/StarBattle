@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { RotateCcw, BadgeCheck, Lightbulb, Star as StarIcon, X as XIcon } from 'lucide-react'
+import { RotateCcw, BadgeCheck, Lightbulb, Moon, Sun, Heart, Star as StarIcon, X as XIcon } from 'lucide-react'
 import clsx from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -125,6 +125,30 @@ const REGION_BG: string[] = [
   'bg-orange-50',
   'bg-fuchsia-50',
 ]
+const REGION_BG_DARK: string[] = [
+  'bg-rose-900/35',
+  'bg-amber-900/35',
+  'bg-sky-900/35',
+  'bg-emerald-900/35',
+  'bg-violet-900/35',
+  'bg-pink-900/35',
+  'bg-lime-900/35',
+  'bg-cyan-900/35',
+  'bg-orange-900/35',
+  'bg-fuchsia-900/35',
+]
+const REGION_BG_SABI: string[] = [
+  'bg-rose-200/80',
+  'bg-pink-200/80',
+  'bg-fuchsia-200/80',
+  'bg-rose-300/70',
+  'bg-pink-300/70',
+  'bg-fuchsia-300/70',
+  'bg-rose-200/70',
+  'bg-pink-200/70',
+  'bg-fuchsia-200/70',
+  'bg-rose-300/60',
+]
 
 function makeGrid<T>(value: T) {
   return Array.from({ length: SIZE }, () => Array.from({ length: SIZE }, () => value))
@@ -144,7 +168,20 @@ function formatTime(seconds: number) {
   return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
 }
 
+type Theme = 'light' | 'dark' | 'sabi'
+const THEME_KEY = 'sabis-starbattle-theme'
+
 function StarBattleGame() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const s = localStorage.getItem(THEME_KEY)
+      if (s === 'dark' || s === 'sabi' || s === 'light') return s
+    } catch {
+      /* ignore */
+    }
+    return 'light'
+  })
+  const [hintCount, setHintCount] = useState(0)
   const [puzzleIndex, setPuzzleIndex] = useState(0)
   const regions = PUZZLES[puzzleIndex]
   const [cells, setCells] = useState<CellState[][]>(() => makeGrid<CellState>('empty'))
@@ -155,8 +192,21 @@ function StarBattleGame() {
   const [wrongStarsAfterCheck, setWrongStarsAfterCheck] = useState<Set<string> | null>(null)
   const [hintMessage, setHintMessage] = useState<string | null>(null)
   const [hintWrongStars, setHintWrongStars] = useState<Set<string> | null>(null)
+  const [sabiModal, setSabiModal] = useState<'confirm' | 'rejected' | null>(null)
   const checkWrongTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hintWrongTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      /* ignore */
+    }
+    const root = document.documentElement
+    root.classList.remove('dark', 'theme-sabi')
+    if (theme === 'dark') root.classList.add('dark')
+    if (theme === 'sabi') root.classList.add('theme-sabi')
+  }, [theme])
 
   function selectPuzzle(idx: number) {
     if (idx === puzzleIndex) return
@@ -290,6 +340,7 @@ function StarBattleGame() {
   }
 
   function onHint() {
+    setHintCount((c) => c + 1)
     if (hintWrongTimeoutRef.current) {
       clearTimeout(hintWrongTimeoutRef.current)
       hintWrongTimeoutRef.current = null
@@ -353,58 +404,123 @@ function StarBattleGame() {
     }
   }
 
+  const isDark = theme === 'dark'
+  const isSabi = theme === 'sabi'
+  const bgMain = isSabi ? 'bg-pink-50' : isDark ? 'bg-slate-900' : 'bg-slate-50'
+  const textMain = isSabi ? 'text-pink-950' : isDark ? 'text-slate-100' : 'text-slate-900'
+  const cardCls = isSabi
+    ? 'bg-pink-100/80 ring-pink-300 text-pink-950'
+    : isDark
+      ? 'bg-slate-800 ring-slate-600 text-slate-100'
+      : 'bg-white ring-slate-200 text-slate-900'
+  const mutedCls = isSabi ? 'text-pink-700' : isDark ? 'text-slate-400' : 'text-slate-500'
+  const accentRing = isSabi ? 'ring-pink-400' : isDark ? 'ring-slate-500' : 'ring-slate-500'
+
   return (
-    <div className="min-h-[100dvh] max-h-[100dvh] w-full overscroll-none bg-slate-50 text-slate-900">
+    <div className={cn('min-h-[100dvh] max-h-[100dvh] w-full overscroll-none', bgMain, textMain)}>
+      {sabiModal === 'confirm' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="sabi-dialog-title">
+          <div className={cn('w-full max-w-sm rounded-2xl p-5 shadow-xl ring-1', cardCls)}>
+            <p id="sabi-dialog-title" className="mb-4 text-center font-semibold">Bist du Sabi?</p>
+            <div className="flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => { setTheme('sabi'); setSabiModal(null) }}
+                className="rounded-xl px-4 py-2 text-sm font-semibold ring-1 ring-pink-500 bg-pink-400 text-pink-950 transition hover:bg-pink-300"
+              >
+                Ja
+              </button>
+              <button
+                type="button"
+                onClick={() => setSabiModal('rejected')}
+                className={cn('rounded-xl px-4 py-2 text-sm font-semibold ring-1 transition', isDark ? 'bg-slate-700 text-slate-200 ring-slate-600 hover:bg-slate-600' : 'bg-slate-200 text-slate-800 ring-slate-300 hover:bg-slate-300')}
+              >
+                Nein
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sabiModal === 'rejected' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="sabi-rejected-title">
+          <div className={cn('w-full max-w-sm rounded-2xl p-5 shadow-xl ring-1', cardCls)}>
+            <p id="sabi-rejected-title" className="mb-4 text-center font-semibold">Dann kann ich leider nichts für dich tun.</p>
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setSabiModal(null)}
+                className={cn('rounded-xl px-4 py-2 text-sm font-semibold ring-1 transition', isSabi ? 'bg-pink-400 text-pink-950 ring-pink-500 hover:bg-pink-300' : isDark ? 'bg-slate-600 text-white ring-slate-500 hover:bg-slate-500' : 'bg-slate-200 text-slate-800 ring-slate-300 hover:bg-slate-300')}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mx-auto flex h-full w-full max-w-xl flex-col gap-3 px-3 py-3">
         <header className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-left">
-            <div className="text-sm font-medium text-slate-500">Sabis Star Battle</div>
+            <div className={cn('text-sm font-medium', mutedCls)}>Sabis Star Battle</div>
             <div className="text-xl font-semibold tracking-tight">10×10 • 2 Sterne</div>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-slate-600">Feld:</span>
-            <select
-              value={puzzleIndex}
-              onChange={(e) => selectPuzzle(Number(e.target.value))}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 font-medium text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-            >
-              {PUZZLES.map((_, i) => (
-                <option key={i} value={i}>
-                  {i + 1}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex items-center gap-2">
-            <div className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-slate-200">
-              <span className="text-slate-500">Zeit</span>{' '}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className={cn('flex gap-1 rounded-lg p-0.5 ring-1', isSabi ? 'bg-pink-200/50 ring-pink-300' : isDark ? 'bg-slate-800 ring-slate-600' : 'bg-slate-200 ring-slate-200')}>
+              <button type="button" onClick={() => setTheme('light')} className={cn('rounded-md p-1.5', theme === 'light' && (isSabi ? 'bg-pink-300 text-pink-950' : isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900 shadow-sm'))} aria-label="Hell"><Sun className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setTheme('dark')} className={cn('rounded-md p-1.5', theme === 'dark' && 'bg-slate-700 text-white shadow-sm')} aria-label="Dunkel"><Moon className="h-4 w-4" /></button>
+              <button
+                type="button"
+                onClick={() => setSabiModal('confirm')}
+                className={cn('rounded-md p-1.5', theme === 'sabi' && 'bg-pink-400 text-pink-950 shadow-sm')}
+                aria-label="Ich bin Sabi"
+              >
+                <Heart className="h-4 w-4" />
+              </button>
+            </div>
+            <label className={cn('flex items-center gap-2 text-sm ring-1 rounded-lg px-2 py-1.5', cardCls)}>
+              <span className={mutedCls}>Feld:</span>
+              <select
+                value={puzzleIndex}
+                onChange={(e) => selectPuzzle(Number(e.target.value))}
+                className={cn('rounded bg-transparent font-medium focus:outline-none', textMain)}
+              >
+                {PUZZLES.map((_, i) => (
+                  <option key={i} value={i}>
+                    {i + 1}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className={cn('rounded-xl px-3 py-2 text-sm font-semibold ring-1', cardCls)}>
+              <span className={mutedCls}>Zeit</span>{' '}
               <span className="tabular-nums">{formatTime(elapsedSec)}</span>
             </div>
           </div>
         </header>
 
         <div className="flex items-center justify-between gap-2">
-          <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
+          <label className={cn('flex items-center gap-2 rounded-xl px-3 py-2 text-sm ring-1', cardCls)}>
             <input
               type="checkbox"
-              className="h-4 w-4 accent-slate-900"
+              className={cn('h-4 w-4', isSabi ? 'accent-pink-600' : 'accent-slate-900')}
               checked={autoX}
               onChange={(e) => setAutoX(e.target.checked)}
             />
             <span className="font-medium">Auto‑X Nachbarn</span>
           </label>
-          <div className="text-right text-xs text-slate-500">
-            Konflikte: <span className={cn(conflicts.size ? 'font-semibold text-red-600' : 'font-medium')}>{conflicts.size}</span>
+          <div className={cn('text-right text-xs', mutedCls)}>
+            Konflikte: <span className={cn(conflicts.size ? 'font-semibold text-red-500' : 'font-medium')}>{conflicts.size}</span>
+            {' · '}
+            Hint: <span className="tabular-nums font-medium">{hintCount}</span>
           </div>
         </div>
 
         <div className="flex w-full flex-col items-center gap-3">
-          <Grid cells={cells} regions={regions} conflicts={conflicts} wrongStars={wrongStarsAfterCheck} hintWrongStars={hintWrongStars} onCellClick={cycleCell} />
+          <Grid cells={cells} regions={regions} conflicts={conflicts} wrongStars={wrongStarsAfterCheck} hintWrongStars={hintWrongStars} onCellClick={cycleCell} theme={theme} />
 
           <div className="grid w-full grid-cols-3 gap-2">
             <button
               onClick={onHint}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+              className={cn('inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 transition', cardCls, isSabi ? 'hover:bg-pink-200/80' : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50')}
             >
               <Lightbulb className="h-4 w-4" />
               Hint
@@ -412,12 +528,12 @@ function StarBattleGame() {
             <button
               onClick={onCheck}
               className={cn(
-                'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-sm ring-1 transition',
+                'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 transition',
                 checkPulse?.ok === false
-                  ? 'bg-white text-red-700 ring-red-200'
+                  ? isSabi ? 'bg-pink-200 text-red-700 ring-red-300' : isDark ? 'bg-slate-800 text-red-400 ring-red-500' : 'bg-white text-red-700 ring-red-200'
                   : checkPulse?.ok === true
                     ? 'bg-emerald-600 text-white ring-emerald-700/20'
-                    : 'bg-white text-slate-900 ring-slate-200 hover:bg-slate-50',
+                    : cn(cardCls, isSabi ? 'hover:bg-pink-200/80' : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'),
               )}
             >
               <BadgeCheck className="h-4 w-4" />
@@ -425,7 +541,7 @@ function StarBattleGame() {
             </button>
             <button
               onClick={clearBoard}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+              className={cn('inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ring-1 transition', cardCls, isSabi ? 'hover:bg-pink-200/80' : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50')}
             >
               <RotateCcw className="h-4 w-4" />
               Clear Board
@@ -435,8 +551,8 @@ function StarBattleGame() {
           {checkPulse && (
             <div
               className={cn(
-                'w-full rounded-xl px-4 py-3 text-sm shadow-sm ring-1',
-                checkPulse.ok ? 'bg-emerald-50 text-emerald-900 ring-emerald-200' : 'bg-red-50 text-red-900 ring-red-200',
+                'w-full rounded-xl px-4 py-3 text-sm ring-1',
+                checkPulse.ok ? 'bg-emerald-50 text-emerald-900 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-700' : 'bg-red-50 text-red-900 ring-red-200 dark:bg-red-900/30 dark:text-red-200 dark:ring-red-700',
               )}
             >
               {checkPulse.text}
@@ -444,15 +560,15 @@ function StarBattleGame() {
           )}
 
           {hintMessage && (
-            <div className="w-full rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200">
+            <div className={cn('w-full rounded-xl px-4 py-3 text-sm ring-1', isSabi ? 'bg-pink-200/80 text-pink-950 ring-pink-300' : 'bg-sky-50 text-sky-900 ring-sky-200 dark:bg-sky-900/30 dark:text-sky-200 dark:ring-sky-700')}>
               {hintMessage}
             </div>
           )}
 
-          <StatsDisplay stats={stats} />
+          <StatsDisplay stats={stats} theme={theme} />
         </div>
 
-        <footer className="mt-auto pb-1 text-center text-[11px] text-slate-500">
+        <footer className={cn('mt-auto pb-1 text-center text-[11px]', mutedCls)}>
           Tippen: Leer → X → Stern → Leer. Sterne dürfen sich nicht berühren (auch diagonal).
         </footer>
       </div>
@@ -467,15 +583,20 @@ function Grid(props: {
   wrongStars: Set<string> | null
   hintWrongStars: Set<string> | null
   onCellClick: (r: number, c: number) => void
+  theme: Theme
 }) {
-  const { cells, regions, conflicts, wrongStars, hintWrongStars, onCellClick } = props
+  const { cells, regions, conflicts, wrongStars, hintWrongStars, onCellClick, theme } = props
+  const isDark = theme === 'dark'
+  const isSabi = theme === 'sabi'
+  const gridRing = isSabi ? 'ring-pink-300' : isDark ? 'ring-slate-600' : 'ring-slate-200'
   return (
     <div
       className={cn(
         'w-full max-w-[min(90vw,70vh)]',
         'aspect-square',
-        'rounded-2xl bg-white shadow-sm ring-1 ring-slate-200',
-        'touch-manipulation select-none',
+        'rounded-2xl shadow-sm ring-1 touch-manipulation select-none',
+        isSabi ? 'bg-pink-100/90' : isDark ? 'bg-slate-800' : 'bg-white',
+        gridRing,
       )}
     >
       <div className="grid h-full w-full grid-cols-10 grid-rows-10 overflow-hidden rounded-2xl [&>*]:min-w-0 [&>*]:min-h-0">
@@ -491,6 +612,7 @@ function Grid(props: {
               isConflict={conflicts.has(keyOf(r, c))}
               isWrong={(wrongStars !== null && wrongStars.has(keyOf(r, c))) || (hintWrongStars !== null && hintWrongStars.has(keyOf(r, c)))}
               onClick={() => onCellClick(r, c)}
+              theme={theme}
             />
           )),
         )}
@@ -508,9 +630,21 @@ function Cell(props: {
   isConflict: boolean
   isWrong: boolean
   onClick: () => void
+  theme: Theme
 }) {
-  const { state, regionId, border, isConflict, isWrong, onClick } = props
-  const bg = REGION_BG[regionId % REGION_BG.length]
+  const { state, regionId, border, isConflict, isWrong, onClick, theme } = props
+  const isDark = theme === 'dark'
+  const isSabi = theme === 'sabi'
+  const bgArray = isSabi ? REGION_BG_SABI : isDark ? REGION_BG_DARK : REGION_BG
+  const bg = bgArray[regionId % bgArray.length]
+  const borderCl = isSabi ? 'border-pink-400/60' : isDark ? 'border-slate-500/60' : 'border-slate-300/70'
+  const conflictWrongCl = isSabi
+    ? 'bg-red-200 ring-red-500'
+    : isDark
+      ? 'bg-red-900/50 ring-red-400'
+      : 'bg-red-100 ring-red-500'
+  const starCl = (isConflict || isWrong) ? 'text-red-700' : isSabi ? 'text-pink-900' : isDark ? 'text-slate-100' : 'text-slate-900'
+  const xCl = isDark ? 'text-slate-500' : 'text-slate-400'
 
   return (
     <button
@@ -519,49 +653,67 @@ function Cell(props: {
       className={cn(
         'relative flex h-full w-full min-h-0 min-w-0 items-center justify-center',
         'touch-manipulation select-none',
-        'border-slate-300/70',
+        borderCl,
         bg,
         border.t ? 'border-t-4' : 'border-t',
         border.r ? 'border-r-4' : 'border-r',
         border.b ? 'border-b-4' : 'border-b',
         border.l ? 'border-l-4' : 'border-l',
-        isConflict && state === 'star' && 'bg-red-100 ring-inset ring-2 ring-red-500',
-        isConflict && state === 'star' && 'animate-pulse',
-        isWrong && state === 'star' && 'bg-red-100 ring-inset ring-2 ring-red-500 animate-pulse',
+        isConflict && state === 'star' && conflictWrongCl,
+        isConflict && state === 'star' && 'ring-inset ring-2 animate-pulse',
+        isWrong && state === 'star' && conflictWrongCl,
+        isWrong && state === 'star' && 'ring-inset ring-2 animate-pulse',
         'active:brightness-95',
-        'outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30',
+        isSabi ? 'outline-none focus-visible:ring-2 focus-visible:ring-pink-500/50' : isDark ? 'outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50' : 'outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30',
       )}
       aria-label={`Zelle ${props.r + 1},${props.c + 1}`}
     >
-      {state === 'x' && <XIcon className="h-[60%] w-[60%] max-h-full max-w-full shrink-0 text-slate-400" strokeWidth={2.25} />}
-      {state === 'star' && <StarIcon className={cn('h-[60%] w-[60%] max-h-full max-w-full shrink-0', (isConflict || isWrong) ? 'text-red-700' : 'text-slate-900')} fill="currentColor" strokeWidth={1.5} />}
+      {state === 'x' && <XIcon className={cn('h-[60%] w-[60%] max-h-full max-w-full shrink-0', xCl)} strokeWidth={2.25} />}
+      {state === 'star' && <StarIcon className={cn('h-[60%] w-[60%] max-h-full max-w-full shrink-0', starCl)} fill="currentColor" strokeWidth={1.5} />}
     </button>
   )
 }
 
-function StatsDisplay(props: { stats: ReturnType<typeof computeStats> }) {
-  const { stats } = props
+function StatsDisplay(props: { stats: ReturnType<typeof computeStats>; theme: Theme }) {
+  const { stats, theme } = props
   return (
     <div className="grid w-full grid-cols-3 gap-2">
-      <StatColumn title="Rows" items={stats.rows.map((n, i) => ({ label: `R${i + 1}`, value: n }))} />
-      <StatColumn title="Cols" items={stats.cols.map((n, i) => ({ label: `C${i + 1}`, value: n }))} />
-      <StatColumn title="Regions" items={stats.regions.map((n, i) => ({ label: `G${i}`, value: n }))} />
+      <StatColumn theme={theme} title="Rows" items={stats.rows.map((n, i) => ({ label: `R${i + 1}`, value: n }))} />
+      <StatColumn theme={theme} title="Cols" items={stats.cols.map((n, i) => ({ label: `C${i + 1}`, value: n }))} />
+      <StatColumn theme={theme} title="Regions" items={stats.regions.map((n, i) => ({ label: `G${i}`, value: n }))} />
     </div>
   )
 }
 
-function StatColumn(props: { title: string; items: Array<{ label: string; value: number }> }) {
+function StatColumn(props: { theme: Theme; title: string; items: Array<{ label: string; value: number }> }) {
+  const { theme, title, items } = props
+  const isDark = theme === 'dark'
+  const isSabi = theme === 'sabi'
+  const cardCls = isSabi ? 'bg-pink-100/90 ring-pink-300' : isDark ? 'bg-slate-800 ring-slate-600' : 'bg-white ring-slate-200'
+  const titleCls = isSabi ? 'text-pink-800' : isDark ? 'text-slate-400' : 'text-slate-600'
   return (
-    <section className="rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-200">
-      <div className="px-1 pb-2 text-xs font-semibold text-slate-600">{props.title}</div>
+    <section className={cn('rounded-2xl p-2 shadow-sm ring-1', cardCls)}>
+      <div className={cn('px-1 pb-2 text-xs font-semibold', titleCls)}>{title}</div>
       <div className="max-h-28 space-y-1 overflow-auto pr-1">
-        {props.items.map((it) => {
+        {items.map((it) => {
           const cls =
             it.value > STARS_PER_UNIT
-              ? 'text-red-700 bg-red-50 ring-red-200 animate-pulse'
+              ? isSabi
+                ? 'text-red-700 bg-red-200/80 ring-red-300 animate-pulse'
+                : isDark
+                  ? 'text-red-300 bg-red-900/40 ring-red-600 animate-pulse'
+                  : 'text-red-700 bg-red-50 ring-red-200 animate-pulse'
               : it.value === STARS_PER_UNIT
-                ? 'text-emerald-700 bg-emerald-50 ring-emerald-200'
-                : 'text-slate-600 bg-slate-50 ring-slate-200'
+                ? isSabi
+                  ? 'text-emerald-800 bg-emerald-200/80 ring-emerald-300'
+                  : isDark
+                    ? 'text-emerald-300 bg-emerald-900/40 ring-emerald-600'
+                    : 'text-emerald-700 bg-emerald-50 ring-emerald-200'
+                : isSabi
+                  ? 'text-pink-700 bg-pink-200/60 ring-pink-300'
+                  : isDark
+                    ? 'text-slate-400 bg-slate-700/50 ring-slate-600'
+                    : 'text-slate-600 bg-slate-50 ring-slate-200'
           return (
             <div
               key={it.label}

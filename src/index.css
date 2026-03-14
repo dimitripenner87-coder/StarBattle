@@ -10,3 +10,8 @@ body {
   margin: 0;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Sabi (pink) theme – wird aktiv wenn html.theme-sabi */
+.theme-sabi {
+  color-scheme: light;
+}
