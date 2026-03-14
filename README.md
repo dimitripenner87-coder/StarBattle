@@ -1,6 +1,6 @@
-# Star Battle (10x10) – Mobile MVP
+# Sabis Star Battle (10x10) – Mobile MVP
 
-Mobile-first Star-Battle (Logic Puzzle) als React Web-App mit Vite, TypeScript, Tailwind CSS und Icons via `lucide-react`.
+Mobile-first Sabis Star Battle (Logic Puzzle) als React Web-App mit Vite, TypeScript, Tailwind CSS und Icons via `lucide-react`.
 
 ## Spielregeln (Kurz)
 - **Grid**: 10×10

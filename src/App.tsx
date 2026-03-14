@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { RotateCcw, BadgeCheck, Star as StarIcon, X as XIcon } from 'lucide-react'
+import { RotateCcw, BadgeCheck, Lightbulb, Star as StarIcon, X as XIcon } from 'lucide-react'
 import clsx from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -13,22 +13,9 @@ type Dir = 't' | 'r' | 'b' | 'l'
 const SIZE = 10
 const STARS_PER_UNIT = 2
 
-/** 50 auswählbare 10x10 Region-Layouts – typische Star-Battle-Formen (L, T, Streifen, Blöcke), u.a. von Krazydad/Norvig inspiriert. */
+/** 50 auswählbare 10x10 Region-Layouts – nur lösbare (base2/3: Norvig/Snyder). base1 entfallen (2×2-Region unten rechts ist unlösbar). */
 const PUZZLES: number[][][] = (() => {
-  // Basis 1: Klassisch, überlappende Blöcke (rechteckig/ L-artig)
-  const base1: number[][] = [
-    [0, 0, 0, 1, 1, 1, 2, 2, 2, 2],
-    [0, 0, 0, 1, 1, 1, 2, 2, 2, 2],
-    [3, 3, 3, 3, 4, 4, 4, 5, 5, 5],
-    [3, 3, 3, 3, 4, 4, 4, 5, 5, 5],
-    [6, 6, 6, 6, 6, 7, 7, 7, 7, 7],
-    [6, 6, 6, 6, 6, 7, 7, 7, 7, 7],
-    [8, 8, 8, 8, 8, 8, 9, 9, 9, 9],
-    [8, 8, 8, 8, 8, 8, 9, 9, 9, 9],
-    [0, 0, 0, 0, 1, 1, 1, 1, 2, 2],
-    [0, 0, 0, 0, 1, 1, 1, 1, 2, 2],
-  ]
-  // Basis 2: Norvig/Krazydad-Stil – L-Formen, unregelmäßige Regionen (Barry Hayes Board)
+  // Basis 2: Norvig/Krazydad – Barry Hayes Board (verifiziert lösbar)
   const base2: number[][] = [
     [0, 1, 1, 1, 1, 1, 2, 3, 3, 3],
     [0, 1, 1, 1, 1, 1, 2, 3, 3, 3],
@@ -41,7 +28,7 @@ const PUZZLES: number[][][] = (() => {
     [4, 7, 7, 7, 9, 9, 9, 8, 8, 8],
     [4, 4, 4, 9, 9, 9, 9, 8, 8, 8],
   ]
-  // Basis 3: „24“-Puzzle (Thomas Snyder) – verschränkte 2er/4er-Formen
+  // Basis 3: „24“-Puzzle (Thomas Snyder, Norvig gelöst)
   const base3: number[][] = [
     [0, 0, 0, 1, 1, 2, 2, 2, 2, 2],
     [0, 3, 3, 3, 1, 4, 2, 4, 2, 8],
@@ -53,32 +40,6 @@ const PUZZLES: number[][][] = (() => {
     [9, 9, 5, 6, 6, 6, 6, 6, 7, 8],
     [9, 9, 5, 5, 5, 9, 8, 6, 7, 8],
     [9, 9, 9, 9, 9, 9, 8, 8, 8, 8],
-  ]
-  // Basis 4: Lange Streifen + kleine Blöcke (typisch für Tutorials)
-  const base4: number[][] = [
-    [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-    [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-    [2, 2, 2, 3, 3, 3, 4, 4, 4, 4],
-    [2, 2, 2, 3, 3, 3, 4, 4, 4, 4],
-    [2, 2, 5, 5, 5, 6, 6, 6, 7, 7],
-    [8, 8, 5, 5, 5, 6, 6, 6, 7, 7],
-    [8, 8, 8, 8, 9, 9, 9, 9, 9, 7],
-    [8, 8, 8, 8, 9, 9, 9, 9, 9, 7],
-    [8, 8, 8, 8, 9, 9, 9, 9, 9, 7],
-    [8, 8, 8, 8, 9, 9, 9, 9, 9, 7],
-  ]
-  // Basis 5: T- und L-Formen
-  const base5: number[][] = [
-    [0, 0, 0, 1, 1, 2, 2, 2, 2, 2],
-    [0, 0, 1, 1, 1, 1, 1, 2, 2, 2],
-    [0, 3, 3, 3, 4, 4, 4, 4, 4, 5],
-    [3, 3, 3, 3, 4, 4, 4, 4, 5, 5],
-    [3, 3, 6, 6, 6, 6, 6, 5, 5, 5],
-    [7, 7, 7, 6, 6, 6, 6, 6, 8, 8],
-    [7, 7, 7, 7, 7, 8, 8, 8, 8, 8],
-    [7, 7, 9, 9, 9, 9, 8, 8, 8, 8],
-    [7, 7, 9, 9, 9, 9, 9, 9, 9, 9],
-    [7, 7, 9, 9, 9, 9, 9, 9, 9, 9],
   ]
   const mirrorH = (m: number[][]) => m.map((row) => [...row].reverse())
   const mirrorV = (m: number[][]) => [...m].reverse()
@@ -96,7 +57,7 @@ const PUZZLES: number[][][] = (() => {
     }
     return p
   }
-  const bases = [base1, base2, base3, base4, base5]
+  const bases = [base2, base3]
   const layouts: number[][][] = []
   for (const b of bases) {
     layouts.push(b, mirrorH(b), mirrorV(b), rot90(b), rot180(b), rot270(b), mirrorH(rot90(b)), mirrorV(rot90(b)))
@@ -104,6 +65,50 @@ const PUZZLES: number[][][] = (() => {
   const out: number[][][] = []
   for (let i = 0; i < 50; i++) {
     out.push(permute(layouts[i % layouts.length], perm(i)))
+  }
+  return out
+})()
+
+/** Musterlösungen für alle 50 Felder (Norvig board1/board24, gleiche Transformationen wie Layouts). */
+const SOLUTIONS: Set<string>[] = (() => {
+  const key = (r: number, c: number) => `${r},${c}`
+  const idxToKey = (i: number) => key(Math.floor(i / 10), i % 10)
+  // Norvig board1 (base2) Lösung: Zell-Indizes 0–99
+  const base2Idx = [6, 8, 11, 14, 26, 28, 30, 32, 47, 49, 53, 55, 61, 69, 73, 75, 80, 87, 92, 94]
+  const base2Keys = new Set(base2Idx.map(idxToKey))
+  // Norvig board24 (base3) Lösung
+  const base3Idx = [6, 9, 12, 14, 20, 27, 32, 34, 47, 49, 50, 55, 63, 68, 71, 75, 83, 88, 91, 96]
+  const base3Keys = new Set(base3Idx.map(idxToKey))
+
+  const transformKeys = (keys: Set<string>, t: (r: number, c: number) => [number, number]): Set<string> => {
+    const out = new Set<string>()
+    keys.forEach((k) => {
+      const [r, c] = k.split(',').map(Number)
+      const [r2, c2] = t(r, c)
+      out.add(key(r2, c2))
+    })
+    return out
+  }
+  const N = 9
+  const transforms: Array<(r: number, c: number) => [number, number]> = [
+    (r, c) => [r, c],
+    (r, c) => [r, N - c],
+    (r, c) => [N - r, c],
+    (r, c) => [c, N - r],
+    (r, c) => [N - r, N - c],
+    (r, c) => [N - c, r],
+    (r, c) => [c, r],
+    (r, c) => [N - c, N - r],
+  ]
+  const layoutSolutions: Set<string>[] = []
+  for (const keys of [base2Keys, base3Keys]) {
+    for (const t of transforms) {
+      layoutSolutions.push(transformKeys(keys, t))
+    }
+  }
+  const out: Set<string>[] = []
+  for (let i = 0; i < 50; i++) {
+    out.push(layoutSolutions[i % layoutSolutions.length])
   }
   return out
 })()
@@ -147,6 +152,11 @@ function StarBattleGame() {
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [elapsedSec, setElapsedSec] = useState(0)
   const [checkPulse, setCheckPulse] = useState<null | { ok: boolean; text: string }>(null)
+  const [wrongStarsAfterCheck, setWrongStarsAfterCheck] = useState<Set<string> | null>(null)
+  const [hintMessage, setHintMessage] = useState<string | null>(null)
+  const [hintWrongStars, setHintWrongStars] = useState<Set<string> | null>(null)
+  const checkWrongTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hintWrongTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function selectPuzzle(idx: number) {
     if (idx === puzzleIndex) return
@@ -155,6 +165,17 @@ function StarBattleGame() {
     setStartedAt(null)
     setElapsedSec(0)
     setCheckPulse(null)
+    setWrongStarsAfterCheck(null)
+    setHintMessage(null)
+    setHintWrongStars(null)
+    if (checkWrongTimeoutRef.current) {
+      clearTimeout(checkWrongTimeoutRef.current)
+      checkWrongTimeoutRef.current = null
+    }
+    if (hintWrongTimeoutRef.current) {
+      clearTimeout(hintWrongTimeoutRef.current)
+      hintWrongTimeoutRef.current = null
+    }
   }
 
   const ticking = startedAt !== null && checkPulse?.ok !== true
@@ -169,6 +190,19 @@ function StarBattleGame() {
     }, 250)
     return () => window.clearInterval(id)
   }, [ticking, startedAt])
+
+  useEffect(() => {
+    return () => {
+      if (checkWrongTimeoutRef.current) {
+        clearTimeout(checkWrongTimeoutRef.current)
+        checkWrongTimeoutRef.current = null
+      }
+      if (hintWrongTimeoutRef.current) {
+        clearTimeout(hintWrongTimeoutRef.current)
+        hintWrongTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   const stats = useMemo(() => computeStats(cells, regions), [cells, regions])
   const conflicts = useMemo(() => computeAdjacencyConflicts(cells), [cells])
@@ -189,6 +223,17 @@ function StarBattleGame() {
   function cycleCell(r: number, c: number) {
     startIfNeeded()
     setCheckPulse(null)
+    setWrongStarsAfterCheck(null)
+    setHintMessage(null)
+    setHintWrongStars(null)
+    if (hintWrongTimeoutRef.current) {
+      clearTimeout(hintWrongTimeoutRef.current)
+      hintWrongTimeoutRef.current = null
+    }
+    if (checkWrongTimeoutRef.current) {
+      clearTimeout(checkWrongTimeoutRef.current)
+      checkWrongTimeoutRef.current = null
+    }
 
     setCells((prev) => {
       const next = prev.map((row) => row.slice())
@@ -230,10 +275,58 @@ function StarBattleGame() {
     setStartedAt(null)
     setElapsedSec(0)
     setCheckPulse(null)
+    setWrongStarsAfterCheck(null)
+    setHintMessage(null)
+    setHintWrongStars(null)
     lastTickRef.current = 0
+    if (checkWrongTimeoutRef.current) {
+      clearTimeout(checkWrongTimeoutRef.current)
+      checkWrongTimeoutRef.current = null
+    }
+    if (hintWrongTimeoutRef.current) {
+      clearTimeout(hintWrongTimeoutRef.current)
+      hintWrongTimeoutRef.current = null
+    }
+  }
+
+  function onHint() {
+    if (hintWrongTimeoutRef.current) {
+      clearTimeout(hintWrongTimeoutRef.current)
+      hintWrongTimeoutRef.current = null
+    }
+    setHintWrongStars(null)
+    const solution = SOLUTIONS[puzzleIndex]
+    const userStars = new Set<string>()
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (cells[r][c] === 'star') userStars.add(keyOf(r, c))
+      }
+    }
+    const wrong = new Set<string>()
+    userStars.forEach((k) => {
+      if (!solution.has(k)) wrong.add(k)
+    })
+    if (wrong.size > 0) {
+      setHintWrongStars(wrong)
+      setHintMessage('Manche Sterne entsprechen nicht der Musterlösung.')
+      hintWrongTimeoutRef.current = setTimeout(() => {
+        setHintWrongStars(null)
+        hintWrongTimeoutRef.current = null
+      }, 2000)
+    } else if (userStars.size === solution.size) {
+      setHintMessage('Deine Sterne entsprechen der Musterlösung. Gelöst!')
+    } else {
+      setHintMessage(`Alle gesetzten Sterne sind korrekt. Noch ${solution.size - userStars.size} Stern(e) fehlen.`)
+    }
   }
 
   function onCheck() {
+    if (checkWrongTimeoutRef.current) {
+      clearTimeout(checkWrongTimeoutRef.current)
+      checkWrongTimeoutRef.current = null
+    }
+    setWrongStarsAfterCheck(null)
+
     const s = computeStats(cells, regions)
     const adj = computeAdjacencyConflicts(cells)
 
@@ -250,7 +343,13 @@ function StarBattleGame() {
     if (problems.length === 0) {
       setCheckPulse({ ok: true, text: 'Die gesetzten Sterne sind korrekt.' })
     } else {
+      const wrongKeys = getWrongStarKeys(cells, regions, adj, s)
+      setWrongStarsAfterCheck(wrongKeys)
       setCheckPulse({ ok: false, text: 'Nicht korrekt: ' + problems.join(' ') })
+      checkWrongTimeoutRef.current = setTimeout(() => {
+        setWrongStarsAfterCheck(null)
+        checkWrongTimeoutRef.current = null
+      }, 1800)
     }
   }
 
@@ -259,7 +358,7 @@ function StarBattleGame() {
       <div className="mx-auto flex h-full w-full max-w-xl flex-col gap-3 px-3 py-3">
         <header className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-left">
-            <div className="text-sm font-medium text-slate-500">Star Battle</div>
+            <div className="text-sm font-medium text-slate-500">Sabis Star Battle</div>
             <div className="text-xl font-semibold tracking-tight">10×10 • 2 Sterne</div>
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -300,9 +399,16 @@ function StarBattleGame() {
         </div>
 
         <div className="flex w-full flex-col items-center gap-3">
-          <Grid cells={cells} regions={regions} conflicts={conflicts} onCellClick={cycleCell} />
+          <Grid cells={cells} regions={regions} conflicts={conflicts} wrongStars={wrongStarsAfterCheck} hintWrongStars={hintWrongStars} onCellClick={cycleCell} />
 
-          <div className="grid w-full grid-cols-2 gap-2">
+          <div className="grid w-full grid-cols-3 gap-2">
+            <button
+              onClick={onHint}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+            >
+              <Lightbulb className="h-4 w-4" />
+              Hint
+            </button>
             <button
               onClick={onCheck}
               className={cn(
@@ -337,6 +443,12 @@ function StarBattleGame() {
             </div>
           )}
 
+          {hintMessage && (
+            <div className="w-full rounded-xl bg-sky-50 px-4 py-3 text-sm text-sky-900 ring-1 ring-sky-200">
+              {hintMessage}
+            </div>
+          )}
+
           <StatsDisplay stats={stats} />
         </div>
 
@@ -352,9 +464,11 @@ function Grid(props: {
   cells: CellState[][]
   regions: number[][]
   conflicts: Set<string>
+  wrongStars: Set<string> | null
+  hintWrongStars: Set<string> | null
   onCellClick: (r: number, c: number) => void
 }) {
-  const { cells, regions, conflicts, onCellClick } = props
+  const { cells, regions, conflicts, wrongStars, hintWrongStars, onCellClick } = props
   return (
     <div
       className={cn(
@@ -375,6 +489,7 @@ function Grid(props: {
               regionId={regions[r][c]}
               border={borderFor(regions, r, c)}
               isConflict={conflicts.has(keyOf(r, c))}
+              isWrong={(wrongStars !== null && wrongStars.has(keyOf(r, c))) || (hintWrongStars !== null && hintWrongStars.has(keyOf(r, c)))}
               onClick={() => onCellClick(r, c)}
             />
           )),
@@ -391,9 +506,10 @@ function Cell(props: {
   regionId: number
   border: Record<Dir, boolean>
   isConflict: boolean
+  isWrong: boolean
   onClick: () => void
 }) {
-  const { state, regionId, border, isConflict, onClick } = props
+  const { state, regionId, border, isConflict, isWrong, onClick } = props
   const bg = REGION_BG[regionId % REGION_BG.length]
 
   return (
@@ -411,13 +527,14 @@ function Cell(props: {
         border.l ? 'border-l-4' : 'border-l',
         isConflict && state === 'star' && 'bg-red-100 ring-inset ring-2 ring-red-500',
         isConflict && state === 'star' && 'animate-pulse',
+        isWrong && state === 'star' && 'bg-red-100 ring-inset ring-2 ring-red-500 animate-pulse',
         'active:brightness-95',
         'outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30',
       )}
       aria-label={`Zelle ${props.r + 1},${props.c + 1}`}
     >
       {state === 'x' && <XIcon className="h-[60%] w-[60%] max-h-full max-w-full shrink-0 text-slate-400" strokeWidth={2.25} />}
-      {state === 'star' && <StarIcon className={cn('h-[60%] w-[60%] max-h-full max-w-full shrink-0', isConflict ? 'text-red-700' : 'text-slate-900')} fill="currentColor" strokeWidth={1.5} />}
+      {state === 'star' && <StarIcon className={cn('h-[60%] w-[60%] max-h-full max-w-full shrink-0', (isConflict || isWrong) ? 'text-red-700' : 'text-slate-900')} fill="currentColor" strokeWidth={1.5} />}
     </button>
   )
 }
@@ -510,6 +627,26 @@ function computeStats(cells: CellState[][], regionMap: number[][]) {
   }
 
   return { rows, cols, regions }
+}
+
+function getWrongStarKeys(
+  cells: CellState[][],
+  regionMap: number[][],
+  adj: Set<string>,
+  s: ReturnType<typeof computeStats>,
+): Set<string> {
+  const wrong = new Set<string>()
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (cells[r][c] !== 'star') continue
+      const key = keyOf(r, c)
+      if (adj.has(key)) wrong.add(key)
+      else if (s.rows[r] > STARS_PER_UNIT) wrong.add(key)
+      else if (s.cols[c] > STARS_PER_UNIT) wrong.add(key)
+      else if (s.regions[regionMap[r][c]] > STARS_PER_UNIT) wrong.add(key)
+    }
+  }
+  return wrong
 }
 
 function isSolved(stats: ReturnType<typeof computeStats>, conflicts: Set<string>) {
